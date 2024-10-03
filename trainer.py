@@ -109,9 +109,9 @@ def trainer_synapse(args, model, snapshot_path):
                 sampled_batch['dataset_id'], sampled_batch['predict_head'], sampled_batch['n_classes']
 
             # Ensure dataset_id and predict_head are tensors and send to device
-            if not isinstance(dataset_id, torch.Tensor):
-                dataset_id = torch.tensor(dataset_id)
-            dataset_id = dataset_id.to(device)
+            # if not isinstance(dataset_id, torch.Tensor):
+            #     dataset_id = torch.tensor(dataset_id)
+            # dataset_id = dataset_id.to(device)
 
             if not isinstance(predict_head, torch.Tensor):
                 predict_head = torch.tensor(predict_head)
@@ -120,7 +120,7 @@ def trainer_synapse(args, model, snapshot_path):
             loss_dice = 0
             image_batch, label_batch = image_batch.to(device), label_batch.to(device)
             # pass dataset_id and predict_head to model
-            outputs = model(image_batch, dataset_id, predict_head)
+            outputs = model(image_batch, predict_head)
 
             for i in range(image_batch.size(0)):
                 num_classes_i = str(n_classes[i].item())

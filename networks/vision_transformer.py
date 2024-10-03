@@ -40,10 +40,10 @@ class SwinUnet(nn.Module):
                                             )
         # print(self.swin_unet.flops()/1e9)
 
-    def forward(self, x, dataset_id, predict_head):
+    def forward(self, x, predict_head):
         if x.size()[1] == 1:
             x = x.repeat(1, 3, 1, 1)  # make channels 3
-        logits = self.swin_unet(x, dataset_id, predict_head)
+        logits = self.swin_unet(x, predict_head)
         return logits
 
     def load_from(self, config):

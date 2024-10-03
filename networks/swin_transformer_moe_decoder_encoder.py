@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import os
 from datetime import datetime
 
+
 # Define the directory for logging
 # log_dir = "./log_gating"
 # if not os.path.exists(log_dir):
@@ -20,7 +21,6 @@ from datetime import datetime
 #     # Create the log file path
 #     log_file_path = os.path.join(log_dir, f"log_gating_weight.txt")
 #     return log_file_path
-
 
 
 class Mlp(nn.Module):
@@ -171,6 +171,7 @@ class WindowAttention(nn.Module):
         flops += N * self.dim * self.dim
         return flops
 
+
 # MoE with gating network
 class MoEFFN_Gating(nn.Module):
     def __init__(self, dim, hidden_dim, num_experts):
@@ -182,7 +183,7 @@ class MoEFFN_Gating(nn.Module):
             nn.Linear(hidden_dim, dim)
         ) for _ in range(num_experts)])
 
-    def forward(self, x, dataset_id):
+    def forward(self, x):
         # Gating mechanism to determine the mixture weights
         weights = self.gating_network(x)
         weights = torch.nn.functional.softmax(weights, dim=-1)
@@ -222,7 +223,7 @@ class MoEFFN_dataset(nn.Module):
             nn.Linear(hidden_dim, dim)
         ) for _ in range(num_experts)])
 
-    def forward(self, x, dataset_id):
+    def forward(self, x):
         # print("number of experts:", len(self.experts))
         # print("shape of x:", x.shape)
 
@@ -239,6 +240,8 @@ class MoEFFN_dataset(nn.Module):
             outputs[i] = expert(x[i])
 
         return outputs
+
+
 # Encoder
 class SwinTransformerBlockEncoder(nn.Module):
     r""" Swin Transformer Block.
@@ -259,7 +262,7 @@ class SwinTransformerBlockEncoder(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
     """
 
-    def __init__(self, dim, input_resolution, num_heads, num_experts,  window_size=7, shift_size=0,
+    def __init__(self, dim, input_resolution, num_heads, num_experts, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
                  act_layer=nn.GELU, norm_layer=nn.LayerNorm):
         super().__init__()
@@ -311,7 +314,7 @@ class SwinTransformerBlockEncoder(nn.Module):
 
         self.register_buffer("attn_mask", attn_mask)
 
-    def forward(self, x, dataset_id):
+    def forward(self, x):
         H, W = self.input_resolution
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
@@ -346,7 +349,7 @@ class SwinTransformerBlockEncoder(nn.Module):
 
         # FFN
         x = shortcut + self.drop_path(x)
-        x = x + self.drop_path(self.mlp(self.norm2(x), dataset_id))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
 
         return x
 
@@ -363,6 +366,8 @@ class SwinTransformerBlockEncoder(nn.Module):
         # norm2
         flops += self.dim * H * W
         return flops
+
+
 class SwinTransformerBlockDecoder(nn.Module):
     r""" Swin Transformer Block.
 
@@ -438,7 +443,7 @@ class SwinTransformerBlockDecoder(nn.Module):
 
         self.register_buffer("attn_mask", attn_mask)
 
-    def forward(self, x, dataset_id):
+    def forward(self, x):
         H, W = self.input_resolution
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
@@ -473,7 +478,7 @@ class SwinTransformerBlockDecoder(nn.Module):
 
         # FFN
         x = shortcut + self.drop_path(x)
-        x = x + self.drop_path(self.mlp(self.norm2(x), dataset_id))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
 
         return x
 
@@ -632,15 +637,15 @@ class BasicLayer(nn.Module):
         # build blocks
         self.blocks = nn.ModuleList([
             SwinTransformerBlockEncoder(dim=dim, input_resolution=input_resolution,
-                                 num_heads=num_heads,
-                                 num_experts=num_experts,
-                                 window_size=window_size,
-                                 shift_size=0 if (i % 2 == 0) else window_size // 2,
-                                 mlp_ratio=mlp_ratio,
-                                 qkv_bias=qkv_bias, qk_scale=qk_scale,
-                                 drop=drop, attn_drop=attn_drop,
-                                 drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                                 norm_layer=norm_layer)
+                                        num_heads=num_heads,
+                                        num_experts=num_experts,
+                                        window_size=window_size,
+                                        shift_size=0 if (i % 2 == 0) else window_size // 2,
+                                        mlp_ratio=mlp_ratio,
+                                        qkv_bias=qkv_bias, qk_scale=qk_scale,
+                                        drop=drop, attn_drop=attn_drop,
+                                        drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                                        norm_layer=norm_layer)
             for i in range(depth)])
 
         # patch merging layer
@@ -649,12 +654,12 @@ class BasicLayer(nn.Module):
         else:
             self.downsample = None
 
-    def forward(self, x, dataset_id):
+    def forward(self, x):
         for blk in self.blocks:
             if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x, dataset_id)
+                x = checkpoint.checkpoint(blk, x)
             else:
-                x = blk(x, dataset_id)
+                x = blk(x)
         if self.downsample is not None:
             x = self.downsample(x)
         return x
@@ -724,12 +729,12 @@ class BasicLayer_up(nn.Module):
         else:
             self.upsample = None
 
-    def forward(self, x, dataset_id):
+    def forward(self, x):
         for blk in self.blocks:
             if self.use_checkpoint:
-                x = checkpoint.checkpoint(blk, x, dataset_id)
+                x = checkpoint.checkpoint(blk, x)
             else:
-                x = blk(x, dataset_id)
+                x = blk(x)
         if self.upsample is not None:
             x = self.upsample(x)
         return x
@@ -918,7 +923,7 @@ class SwinTransformerSys(nn.Module):
             # self.output = nn.Conv2d(in_channels=embed_dim, out_channels=out_channels, kernel_size=1, bias=False)
         self.outputs = nn.ModuleDict({
             str(i): nn.Conv2d(in_channels=embed_dim, out_channels=num_classes[i], kernel_size=1, bias=False)
-            for i in range(len(num_classes))
+            for i in range(self.num_experts)
         })
         self.apply(self._init_weights)
 
@@ -940,7 +945,7 @@ class SwinTransformerSys(nn.Module):
         return {'relative_position_bias_table'}
 
     # Encoder and Bottleneck
-    def forward_features(self, x, dataset_id):
+    def forward_features(self, x):
         x = self.patch_embed(x)
         if self.ape:
             x = x + self.absolute_pos_embed
@@ -949,21 +954,21 @@ class SwinTransformerSys(nn.Module):
 
         for layer in self.layers:
             x_downsample.append(x)
-            x = layer(x, dataset_id)
+            x = layer(x)
 
         x = self.norm(x)  # B L C
 
         return x, x_downsample
 
     # Dencoder and Skip connection
-    def forward_up_features(self, x, x_downsample, dataset_id):
+    def forward_up_features(self, x, x_downsample):
         for inx, layer_up in enumerate(self.layers_up):
             if inx == 0:
                 x = layer_up(x)
             else:
                 x = torch.cat([x, x_downsample[3 - inx]], -1)
                 x = self.concat_back_dim[inx](x)
-                x = layer_up(x, dataset_id)
+                x = layer_up(x)
 
         x = self.norm_up(x)  # B L C
 
@@ -998,9 +1003,9 @@ class SwinTransformerSys(nn.Module):
 
         return x
 
-    def forward(self, x, dataset_id, predict_head):
-        x, x_downsample = self.forward_features(x, dataset_id)
-        x = self.forward_up_features(x, x_downsample, dataset_id)
+    def forward(self, x, predict_head):
+        x, x_downsample = self.forward_features(x)
+        x = self.forward_up_features(x, x_downsample)
         x = self.up_x4(x, predict_head)
 
         return x
