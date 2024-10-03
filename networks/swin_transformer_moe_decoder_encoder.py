@@ -7,7 +7,6 @@ import torch.nn.functional as F
 import os
 from datetime import datetime
 
-
 # Define the directory for logging
 # log_dir = "./log_gating"
 # if not os.path.exists(log_dir):
@@ -21,6 +20,7 @@ from datetime import datetime
 #     # Create the log file path
 #     log_file_path = os.path.join(log_dir, f"log_gating_weight.txt")
 #     return log_file_path
+
 
 
 class Mlp(nn.Module):
@@ -171,7 +171,6 @@ class WindowAttention(nn.Module):
         flops += N * self.dim * self.dim
         return flops
 
-
 # MoE with gating network
 class MoEFFN_Gating(nn.Module):
     def __init__(self, dim, hidden_dim, num_experts):
@@ -212,36 +211,34 @@ class MoEFFN_Gating(nn.Module):
     #         log_file.write(f"{datetime.now().isoformat()}: {weight_str}\n")
 
 
-class MoEFFN_dataset(nn.Module):
-    def __init__(self, dim, hidden_dim, num_experts):
-        super(MoEFFN_dataset, self).__init__()
-
-        # Initialize a module list of experts
-        self.experts = nn.ModuleList([nn.Sequential(
-            nn.Linear(dim, hidden_dim),
-            nn.GELU(),
-            nn.Linear(hidden_dim, dim)
-        ) for _ in range(num_experts)])
-
-    def forward(self, x):
-        # print("number of experts:", len(self.experts))
-        # print("shape of x:", x.shape)
-
-        # Check if any dataset_id is out of the bounds of experts
-        if any(i >= len(self.experts) for i in dataset_id):
-            raise ValueError("dataset_id contains an index that is out of bounds.")
-
-        # Create a placeholder for outputs
-        outputs = torch.zeros_like(x)
-
-        # Apply the expert networks to the input batch, using the dataset_id to select the expert for each sample
-        for i, expert_idx in enumerate(dataset_id):
-            expert = self.experts[expert_idx]
-            outputs[i] = expert(x[i])
-
-        return outputs
-
-
+# class MoEFFN_dataset(nn.Module):
+#     def __init__(self, dim, hidden_dim, num_experts):
+#         super(MoEFFN_dataset, self).__init__()
+#
+#         # Initialize a module list of experts
+#         self.experts = nn.ModuleList([nn.Sequential(
+#             nn.Linear(dim, hidden_dim),
+#             nn.GELU(),
+#             nn.Linear(hidden_dim, dim)
+#         ) for _ in range(num_experts)])
+#
+#     def forward(self, x, dataset_id):
+#         # print("number of experts:", len(self.experts))
+#         # print("shape of x:", x.shape)
+#
+#         # Check if any dataset_id is out of the bounds of experts
+#         if any(i >= len(self.experts) for i in dataset_id):
+#             raise ValueError("dataset_id contains an index that is out of bounds.")
+#
+#         # Create a placeholder for outputs
+#         outputs = torch.zeros_like(x)
+#
+#         # Apply the expert networks to the input batch, using the dataset_id to select the expert for each sample
+#         for i, expert_idx in enumerate(dataset_id):
+#             expert = self.experts[expert_idx]
+#             outputs[i] = expert(x[i])
+#
+#         return outputs
 # Encoder
 class SwinTransformerBlockEncoder(nn.Module):
     r""" Swin Transformer Block.
@@ -262,7 +259,7 @@ class SwinTransformerBlockEncoder(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
     """
 
-    def __init__(self, dim, input_resolution, num_heads, num_experts, window_size=7, shift_size=0,
+    def __init__(self, dim, input_resolution, num_heads, num_experts,  window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
                  act_layer=nn.GELU, norm_layer=nn.LayerNorm):
         super().__init__()
@@ -366,8 +363,6 @@ class SwinTransformerBlockEncoder(nn.Module):
         # norm2
         flops += self.dim * H * W
         return flops
-
-
 class SwinTransformerBlockDecoder(nn.Module):
     r""" Swin Transformer Block.
 
@@ -637,15 +632,15 @@ class BasicLayer(nn.Module):
         # build blocks
         self.blocks = nn.ModuleList([
             SwinTransformerBlockEncoder(dim=dim, input_resolution=input_resolution,
-                                        num_heads=num_heads,
-                                        num_experts=num_experts,
-                                        window_size=window_size,
-                                        shift_size=0 if (i % 2 == 0) else window_size // 2,
-                                        mlp_ratio=mlp_ratio,
-                                        qkv_bias=qkv_bias, qk_scale=qk_scale,
-                                        drop=drop, attn_drop=attn_drop,
-                                        drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                                        norm_layer=norm_layer)
+                                 num_heads=num_heads,
+                                 num_experts=num_experts,
+                                 window_size=window_size,
+                                 shift_size=0 if (i % 2 == 0) else window_size // 2,
+                                 mlp_ratio=mlp_ratio,
+                                 qkv_bias=qkv_bias, qk_scale=qk_scale,
+                                 drop=drop, attn_drop=attn_drop,
+                                 drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                                 norm_layer=norm_layer)
             for i in range(depth)])
 
         # patch merging layer
@@ -923,7 +918,7 @@ class SwinTransformerSys(nn.Module):
             # self.output = nn.Conv2d(in_channels=embed_dim, out_channels=out_channels, kernel_size=1, bias=False)
         self.outputs = nn.ModuleDict({
             str(i): nn.Conv2d(in_channels=embed_dim, out_channels=num_classes[i], kernel_size=1, bias=False)
-            for i in range(self.num_experts)
+            for i in range(len(num_classes))
         })
         self.apply(self._init_weights)
 
