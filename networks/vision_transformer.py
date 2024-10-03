@@ -3,29 +3,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import logging
-import math
-from datetime import datetime
-from os.path import join as pjoin
 
 import torch
 import torch.nn as nn
-import numpy as np
-
-from torch.nn import CrossEntropyLoss, Dropout, Softmax, Linear, Conv2d, LayerNorm
-from torch.nn.modules.utils import _pair
-from scipy import ndimage
 
 from .swin_transformer_moe_decoder_encoder import SwinTransformerSys
 
 logger = logging.getLogger(__name__)
 
+
 # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 class SwinUnet(nn.Module):
-    def __init__(self, config, img_size=224, num_classes=[], zero_head=False, vis=False):
+    def __init__(self, config, img_size=224, num_classes=None, zero_head=False, vis=False):
         super(SwinUnet, self).__init__()
-        self.num_classes = num_classes
+        self.num_classes = num_classes or []
         self.zero_head = zero_head
         self.config = config
 
@@ -50,7 +42,7 @@ class SwinUnet(nn.Module):
 
     def forward(self, x, dataset_id, predict_head):
         if x.size()[1] == 1:
-            x = x.repeat(1, 3, 1, 1)
+            x = x.repeat(1, 3, 1, 1)  # make channels 3
         logits = self.swin_unet(x, dataset_id, predict_head)
         return logits
 
@@ -103,4 +95,3 @@ class SwinUnet(nn.Module):
             # print(msg)
         else:
             print("none pretrain")
-

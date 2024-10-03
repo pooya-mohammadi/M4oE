@@ -810,7 +810,7 @@ class SwinTransformerSys(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
     """
 
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, num_classes=[],
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, num_classes=None,
                  embed_dim=96, depths=[2, 2, 2, 2],
                  depths_decoder=[1, 2, 2, 2],
                  num_heads=[3, 6, 12, 24],
@@ -824,7 +824,7 @@ class SwinTransformerSys(nn.Module):
             "SwinTransformerSys expand initial----depths:{};depths_decoder:{};drop_path_rate:{};num_classes:{}".format(
                 depths,
                 depths_decoder, drop_path_rate, num_classes))
-        self.num_classes = num_classes
+        self.num_classes = num_classes or []
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
         self.ape = ape

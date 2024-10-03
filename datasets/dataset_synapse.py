@@ -29,13 +29,14 @@ def random_rotate(image, label):
     label = ndimage.rotate(label, angle, order=0, reshape=False)
     return image, label
 
-class RandomGenerator(object):
+
+class RandomGenerator:
     def __init__(self, output_size):
         self.output_size = output_size
 
     def __call__(self, sample):
-        image, label, dataset_id, predict_head,n_classes = sample['image'], sample['label'], sample['dataset_id'], sample[
-            'predict_head'], sample['n_classes']
+        image, label, dataset_id, predict_head, n_classes = (sample['image'], sample['label'], sample['dataset_id'],
+                                                             sample['predict_head'], sample['n_classes'])
 
         if random.random() > 0.5:
             image, label = random_rot_flip(image, label)
@@ -55,17 +56,18 @@ class RandomGenerator(object):
 
         # image = image.astype(np.float32)
         # label = label.astype(np.float32)
-        sample = {'image': image, 'label': label, 'dataset_id': dataset_id, 'predict_head': predict_head, 'n_classes': n_classes}
+        sample = {'image': image, 'label': label, 'dataset_id': dataset_id, 'predict_head': predict_head,
+                  'n_classes': n_classes}
         return sample
 
+
 class Synapse_dataset(Dataset):
-    def __init__(self, csv_file, transform=None, modes='train'):
+    def __init__(self, csv_file_path, transform=None, modes='train'):
         self.transform = transform
-        self.dataframe = pd.read_csv(csv_file, sep=',')
+        self.dataframe = pd.read_csv(csv_file_path)
         self.mode = modes
 
     def __len__(self):
-
         return len(self.dataframe)
 
     def __getitem__(self, idx):
@@ -76,24 +78,17 @@ class Synapse_dataset(Dataset):
         dataset_id = row['dataset_id']
         predict_head = row['predict_head']
         n_classes = row['n_classes']
-
-
-        npz_data = np.load(data_dir)
-        data = npz_data['data']
-
-
-        if self.mode == 'train':
-
+        if data_dir.endswith(".npz"):
+            npz_data = np.load(data_dir)
+            data = npz_data['data']
             image = data[img_idx]
             label = data[label_idx]
-
+        elif data_dir.endswith(".jpg"):
+            npz_data = np.array(Image.open(data_dir))
         else:
-
-            image = data[img_idx]
-            label = data[label_idx]
+            raise ValueError(f"data: {data_dir}'s type is not supported!")
 
         filename = os.path.basename(data_dir)
-
         case_name = filename.split('.')[0]
 
         sample = {
@@ -110,10 +105,10 @@ class Synapse_dataset(Dataset):
 
         return sample
 
+
 if __name__ == "__main__":
     csv_file = '../lists/datasets_v10.csv'
     import numpy as np
-    from PIL import Image
 
     transforms_list = [
 
@@ -124,7 +119,7 @@ if __name__ == "__main__":
 
     # max_iterations = args.max_iterations
     dataset = Synapse_dataset(
-        csv_file=csv_file,# Assuming there is a csv file for training data
+        csv_file_path=csv_file,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
         modes='train'
     )
@@ -141,4 +136,3 @@ if __name__ == "__main__":
         # case_name = sample['case_name']
         print(type(image))
         print(image.shape)
-

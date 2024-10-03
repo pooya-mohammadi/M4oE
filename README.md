@@ -54,3 +54,9 @@ sh test.sh or python test.py --cfg configs/swin_tiny_patch4_window7_224_lite.yam
   journal = {arXiv preprint arXiv: 2405.09446}
 }
 ```
+
+# Trials
+First try:
+```commandline
+python train.py --cfg configs/dataset.yaml --root_path ../Swin-MAE/datasets/two_d --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 240
+```

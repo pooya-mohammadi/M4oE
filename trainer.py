@@ -1,28 +1,21 @@
-import argparse
 import logging
 import os
-import random
 import sys
-import time
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
-import torch.multiprocessing as mp
-
 from torch.utils.data import DataLoader
-from tqdm import tqdm
-from utils import DiceLoss
-from torchvision import transforms
-from utils import test_single_volume
-from miseval import evaluate
-from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
 from torch.utils.data.dataloader import default_collate
+from torchvision import transforms
+from tqdm import tqdm
+
+from utils import DiceLoss
 
 
 def custom_collate_fn(batch):
-
     batch = [b for b in batch if b is not None]
 
     if len(batch) == 0: return None
@@ -47,13 +40,13 @@ def trainer_synapse(args, model, snapshot_path):
 
     # max_iterations = args.max_iterations
     db_train = Synapse_dataset(
-        csv_file=args.data_csv,  # Assuming there is a csv file for training data
+        csv_file_path=args.data_csv,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
         modes='train'
     )
 
     db_val = Synapse_dataset(
-        csv_file=args.val_data_csv,  # Assuming there is a csv file for training data
+        csv_file_path=args.val_data_csv,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
         modes='val'
     )
@@ -75,6 +68,7 @@ def trainer_synapse(args, model, snapshot_path):
 
     if args.n_gpu > 1:
         model = nn.DataParallel(model)
+
     model.train()
 
     if not torch.cuda.is_available():
@@ -85,7 +79,6 @@ def trainer_synapse(args, model, snapshot_path):
     ce_loss_functions = {}
     for i, n in enumerate(num_classes):
         ce_loss_functions[str(n)] = nn.CrossEntropyLoss(weight=torch.ones(n).to(device), ignore_index=-1)
-
 
     dice_loss_functions = {}
     for i, n in enumerate(num_classes):
@@ -149,7 +142,6 @@ def trainer_synapse(args, model, snapshot_path):
             loss_ce /= len(predict_head)
             loss_dice /= len(predict_head)
 
-
             loss = 0.4 * loss_ce + 0.7 * loss_dice
 
             optimizer.zero_grad()
@@ -167,7 +159,7 @@ def trainer_synapse(args, model, snapshot_path):
             writer.add_scalar('info/loss_dice', loss_dice, iter_num)
             logging.info(
                 'iteration %d : loss : %f, loss_ce: %f Dice: %f' % (
-                iter_num, loss.item(), loss_ce.item(), loss_dice.item()))
+                    iter_num, loss.item(), loss_ce.item(), loss_dice.item()))
 
             if iter_num % 20 == 0:
                 if image_batch.size(0) > 1:
@@ -202,8 +194,8 @@ def trainer_synapse(args, model, snapshot_path):
                     if sampled_batch is None:
                         continue
                     image_batch, label_batch, dataset_id, predict_head, n_classes = sampled_batch['image'], \
-                    sampled_batch[
-                        'label'], \
+                        sampled_batch[
+                            'label'], \
                         sampled_batch['dataset_id'], sampled_batch['predict_head'], sampled_batch['n_classes']
 
                     # Ensure dataset_id and predict_head are tensors and send to device

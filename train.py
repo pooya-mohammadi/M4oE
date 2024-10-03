@@ -1,16 +1,14 @@
 import argparse
-import logging
 import os
 import random
+
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
+
+from config import get_config
 from networks.vision_transformer import SwinUnet
 from trainer import trainer_synapse
-from config import get_config
-from PIL import Image
-
-
 
 parser = argparse.ArgumentParser()
 
@@ -87,8 +85,6 @@ parser.add_argument('--throughput', action='store_true', help='Test throughput o
 
 args = parser.parse_args()
 config = get_config(args)
-
-
 
 if __name__ == '__main__':
     # def count_parameters(model):
