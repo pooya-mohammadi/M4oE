@@ -1,16 +1,14 @@
-import logging
-import os
-import pandas as pd
 import random
-import h5py
-import numpy as np
+from os.path import split
+
+import pandas as pd
 import torch
+from PIL import Image
 from scipy import ndimage
 from scipy.ndimage import zoom
-import nibabel as nib
-from PIL import Image
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from torch.utils.data import Dataset
+import numpy as np
 
 
 def random_rot_flip(image, label):
@@ -35,20 +33,33 @@ class RandomGenerator:
         self.output_size = output_size
 
     def __call__(self, sample):
-        image, label, dataset_id, predict_head, n_classes = (sample['image'], sample['label'], sample['dataset_id'],
-                                                             sample['predict_head'], sample['n_classes'])
+        image, label, predict_head, n_classes = (sample['image'], sample['label'],
+                                                 sample['predict_head'], sample['n_classes'])
 
         if random.random() > 0.5:
             image, label = random_rot_flip(image, label)
         elif random.random() > 0.5:
             image, label = random_rotate(image, label)
 
-        x, y = image.shape
+        x, y, *z = image.shape
         if x != self.output_size[0] or y != self.output_size[1]:
-            image = zoom(image, (self.output_size[0] / x, self.output_size[1] / y), order=3)
+            if z:
+                zoom_value = (self.output_size[0] / x, self.output_size[1] / y, 1)
+            else:
+                zoom_value = (self.output_size[0] / x, self.output_size[1] / y)
+            image = zoom(image, zoom_value, order=3)
             label = zoom(label, (self.output_size[0] / x, self.output_size[1] / y), order=0)
 
-        image = torch.from_numpy(image.astype(np.float32)).unsqueeze(0)
+        if image.shape[:2] != tuple(self.output_size):
+            raise ValueError("Shape is not correct")
+
+        if label.shape[:2] != tuple(self.output_size):
+            raise ValueError("Shape is not correct")
+        if len(image.shape) == 2:
+            image = torch.from_numpy(image.astype(np.float32)).unsqueeze(0)
+        else:
+            image = transforms.ToTensor()(image)
+            # pass
 
         # image = image.permute(2, 0, 1)
 
@@ -56,12 +67,15 @@ class RandomGenerator:
 
         # image = image.astype(np.float32)
         # label = label.astype(np.float32)
-        sample = {'image': image, 'label': label, 'dataset_id': dataset_id, 'predict_head': predict_head,
+        sample = {'image': image,
+                  'label': label,
+                  'predict_head': predict_head,
                   'n_classes': n_classes}
+
         return sample
 
 
-class Synapse_dataset(Dataset):
+class CardiacDataset(Dataset):
     def __init__(self, csv_file_path, transform=None, modes='train'):
         self.transform = transform
         self.dataframe = pd.read_csv(csv_file_path)
@@ -72,32 +86,23 @@ class Synapse_dataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.dataframe.iloc[idx]
-        data_dir = row['data_dir']
-        img_idx = row['img_idx']
-        label_idx = row['label_idx']
-        dataset_id = row['dataset_id']
+        img_dir = row['img_dir']
+        label_dir = row['label_dir']
         predict_head = row['predict_head']
         n_classes = row['n_classes']
-        if data_dir.endswith(".npz"):
-            npz_data = np.load(data_dir)
-            data = npz_data['data']
-            image = data[img_idx]
-            label = data[label_idx]
-        elif data_dir.endswith(".jpg"):
-            npz_data = np.array(Image.open(data_dir))
-        else:
-            raise ValueError(f"data: {data_dir}'s type is not supported!")
 
-        filename = os.path.basename(data_dir)
-        case_name = filename.split('.')[0]
+        # image =
+        # label =
+
+        # filename = os.path.basename(data_dir)
+        # case_name = filename.split('.')[0]
 
         sample = {
-            'image': image,
-            'label': label,
-            'dataset_id': dataset_id,
+            'image': np.array(Image.open(img_dir)),
+            'label': np.load(label_dir)['arr_0'],
             'predict_head': predict_head,
             'n_classes': n_classes,
-            'case_name': case_name
+            'case_name': split(label_dir)[-1].replace(".npz", "")
         }
 
         if self.transform:
@@ -107,8 +112,7 @@ class Synapse_dataset(Dataset):
 
 
 if __name__ == "__main__":
-    csv_file = '../lists/datasets_v10.csv'
-    import numpy as np
+    csv_file = './lists/datasets_val.csv'
 
     transforms_list = [
 
@@ -118,7 +122,7 @@ if __name__ == "__main__":
     ]
 
     # max_iterations = args.max_iterations
-    dataset = Synapse_dataset(
+    dataset = CardiacDataset(
         csv_file_path=csv_file,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
         modes='train'
@@ -136,3 +140,27 @@ if __name__ == "__main__":
         # case_name = sample['case_name']
         print(type(image))
         print(image.shape)
+
+    from torch.utils.data.dataloader import default_collate
+
+
+    def custom_collate_fn(batch):
+        batch = [b for b in batch if b is not None]
+
+        if len(batch) == 0:
+            return None
+
+        return default_collate(batch)
+
+
+    dl = DataLoader(dataset,
+                    batch_size=8,
+                    shuffle=True,
+                    num_workers=0,
+                    pin_memory=True,
+                    collate_fn=custom_collate_fn,
+                    )
+    for x in dl:
+        v = 10
+        print(x)
+        break

@@ -4,7 +4,22 @@ from medpy import metric
 from scipy.ndimage import zoom
 import torch.nn as nn
 import SimpleITK as sitk
-from miseval import evaluate
+
+
+def calc_IoU_Sets(truth, pred, c=1, **kwargs):
+    # Coppied from
+    # Obtain sets with associated class
+    gt = np.equal(truth, c)
+    pd = np.equal(pred, c)
+    # Calculate IoU
+    if (pd.sum() + gt.sum() - np.logical_and(pd, gt).sum()) != 0:
+        iou = np.logical_and(pd, gt).sum() / \
+              (pd.sum() + gt.sum() - np.logical_and(pd, gt).sum())
+    else:
+        iou = 0.0
+    # Return computed IoU
+    return iou
+
 
 class DiceLoss(nn.Module):
     def __init__(self, n_classes):
@@ -41,7 +56,6 @@ class DiceLoss(nn.Module):
         class_wise_dice = []
         loss = 0.0
         for i in range(0, self.n_classes):
-
             dice = self._dice_loss(inputs[:, i], target[:, i])
             class_wise_dice.append(1.0 - dice.item())
             loss += dice * weight[i]
@@ -54,18 +68,22 @@ def calculate_metric_percase(pred, gt):
     if pred.sum() > 0 and gt.sum() > 0:
         dice = metric.binary.dc(pred, gt)
         hd95 = metric.binary.hd95(pred, gt)
-        iou = evaluate(gt, pred, metric='IoU')
+        # iou = evaluate(gt, pred, metric='IoU')
+        iou = calc_IoU_Sets(gt, pred)
         # print("Dice: ", dice, "HD95: ", hd95, "IoU: ", iou,'\n')
         # print(type(dice), type(hd95), type(iou))
-        return dice, hd95,iou
+        return dice, hd95, iou
     elif pred.sum() > 0 and gt.sum() == 0:
         return 1, 0, 1
     else:
         return 0, 0, 0
-#<class 'float'> <class 'numpy.float64'>
 
 
-def test_single_volume(image, label, net, classes, dataset_id, predict_head, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
+# <class 'float'> <class 'numpy.float64'>
+
+
+def test_single_volume(image, label, net, classes, dataset_id, predict_head, patch_size=[256, 256], test_save_path=None,
+                       case=None, z_spacing=1):
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
     # print("Number of classes: ", classes)
     if len(image.shape) == 3:
@@ -110,4 +128,3 @@ def test_single_volume(image, label, net, classes, dataset_id, predict_head, pat
         sitk.WriteImage(img_itk, test_save_path + '/' + case + "_img.nii.gz")
         sitk.WriteImage(lab_itk, test_save_path + '/' + case + "_gt.nii.gz")
     return metric_list
-

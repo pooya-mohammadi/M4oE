@@ -1,3 +1,4 @@
+from dataset_synapse import CardiacDataset, RandomGenerator
 import logging
 import os
 import sys
@@ -18,7 +19,8 @@ from utils import DiceLoss
 def custom_collate_fn(batch):
     batch = [b for b in batch if b is not None]
 
-    if len(batch) == 0: return None
+    if len(batch) == 0:
+        return None
 
     return default_collate(batch)
 
@@ -39,13 +41,13 @@ def trainer_synapse(args, model, snapshot_path):
     ]
 
     # max_iterations = args.max_iterations
-    db_train = Synapse_dataset(
+    db_train = CardiacDataset(
         csv_file_path=args.data_csv,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
         modes='train'
     )
 
-    db_val = Synapse_dataset(
+    db_val = CardiacDataset(
         csv_file_path=args.val_data_csv,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
         modes='val'
@@ -53,7 +55,7 @@ def trainer_synapse(args, model, snapshot_path):
     trainloader = DataLoader(db_train,
                              batch_size=batch_size,
                              shuffle=True,
-                             num_workers=8,
+                             num_workers=args.num_workers,
                              pin_memory=True,
                              collate_fn=custom_collate_fn,
                              )
@@ -61,7 +63,7 @@ def trainer_synapse(args, model, snapshot_path):
     valloader = DataLoader(db_val,
                            batch_size=batch_size,
                            shuffle=False,
-                           num_workers=8,
+                           num_workers=args.num_workers,
                            pin_memory=True,
                            collate_fn=custom_collate_fn,
                            )
@@ -104,9 +106,8 @@ def trainer_synapse(args, model, snapshot_path):
         for i_batch, sampled_batch in enumerate(trainloader):
             if sampled_batch is None:
                 continue
-            image_batch, label_batch, dataset_id, predict_head, n_classes = sampled_batch['image'], sampled_batch[
-                'label'], \
-                sampled_batch['dataset_id'], sampled_batch['predict_head'], sampled_batch['n_classes']
+            image_batch, label_batch, predict_head, n_classes = sampled_batch['image'], sampled_batch[
+                'label'], sampled_batch['predict_head'], sampled_batch['n_classes']
 
             # Ensure dataset_id and predict_head are tensors and send to device
             # if not isinstance(dataset_id, torch.Tensor):
@@ -193,23 +194,22 @@ def trainer_synapse(args, model, snapshot_path):
                 for i_batch, sampled_batch in enumerate(valloader):
                     if sampled_batch is None:
                         continue
-                    image_batch, label_batch, dataset_id, predict_head, n_classes = sampled_batch['image'], \
-                        sampled_batch[
-                            'label'], \
-                        sampled_batch['dataset_id'], sampled_batch['predict_head'], sampled_batch['n_classes']
+                    image_batch, label_batch, predict_head, n_classes = (
+                    sampled_batch['image'], sampled_batch['label'], sampled_batch['predict_head'],
+                    sampled_batch['n_classes'])
 
                     # Ensure dataset_id and predict_head are tensors and send to device
-                    if not isinstance(dataset_id, torch.Tensor):
-                        dataset_id = torch.tensor(dataset_id)
-                    dataset_id = dataset_id.to(device)
-
+                    # if not isinstance(dataset_id, torch.Tensor):
+                    #     dataset_id = torch.tensor(dataset_id)
+                    # dataset_id = dataset_id.to(device)
+                    #
                     if not isinstance(predict_head, torch.Tensor):
                         predict_head = torch.tensor(predict_head)
                     predict_head = predict_head.to(device)
 
                     image_batch, label_batch = image_batch.to(device), label_batch.to(device)
                     # pass dataset_id and predict_head to model
-                    val_outputs = model(image_batch, dataset_id, predict_head)
+                    val_outputs = model(image_batch, predict_head)
 
                     for i in range(image_batch.size(0)):
                         num_classes_i = str(n_classes[i].item())
@@ -272,34 +272,33 @@ def trainer_synapse(args, model, snapshot_path):
     writer.close()
     return "Training Finished!"
 
-
-if __name__ == '__main__':
-    from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
-
-    db_train = Synapse_dataset(
-        csv_file=r"./lists/flare.csv",  # Assuming there is a csv file for training data
-        transform=transforms.Compose([RandomGenerator(output_size=[224, 224]), ]),
-        modes='train'
-    )
-    print("The length of train set is: {}".format(len(db_train)))
-    trainloader = DataLoader(db_train,
-                             batch_size=12,
-                             shuffle=True,
-                             num_workers=6,
-                             pin_memory=True,
-                             worker_init_fn=None,
-                             collate_fn=custom_collate_fn)
-
-    for i, data in enumerate(trainloader):
-        image_batch, label_batch, dataset_id, predict_head = data['image'], data['label'], data['dataset_id'], data[
-            'predict_head']
-        print("Type of image_batch:{}".format(type(image_batch)))
-        print("image_batch size:{}".format(image_batch.size()))
-        print("label_batch size:{}".format(label_batch.size()))
-        print("dataset_id size:{}".format(dataset_id.size()))
-        print("dataset_id:{}".format(dataset_id))
-        print("predict_head:{}".format(predict_head))
-        print("num_classes:{}".format(data['n_classes']))
-        print('------------------')
-        if i == 3:
-            break
+# if __name__ == '__main__':
+#     from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
+#
+#     db_train = Synapse_dataset(
+#         csv_file=r"./lists/flare.csv",  # Assuming there is a csv file for training data
+#         transform=transforms.Compose([RandomGenerator(output_size=[224, 224]), ]),
+#         modes='train'
+#     )
+#     print("The length of train set is: {}".format(len(db_train)))
+#     trainloader = DataLoader(db_train,
+#                              batch_size=12,
+#                              shuffle=True,
+#                              num_workers=6,
+#                              pin_memory=True,
+#                              worker_init_fn=None,
+#                              collate_fn=custom_collate_fn)
+#
+#     for i, data in enumerate(trainloader):
+#         image_batch, label_batch, dataset_id, predict_head = data['image'], data['label'], data['dataset_id'], data[
+#             'predict_head']
+#         print("Type of image_batch:{}".format(type(image_batch)))
+#         print("image_batch size:{}".format(image_batch.size()))
+#         print("label_batch size:{}".format(label_batch.size()))
+#         print("dataset_id size:{}".format(dataset_id.size()))
+#         print("dataset_id:{}".format(dataset_id))
+#         print("predict_head:{}".format(predict_head))
+#         print("num_classes:{}".format(data['n_classes']))
+#         print('------------------')
+#         if i == 3:
+#             break

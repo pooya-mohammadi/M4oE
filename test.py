@@ -6,13 +6,11 @@ import sys
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from datasets.dataset_synapse import Synapse_dataset
+from dataset_synapse import CardiacDataset
 from utils import test_single_volume
 from networks.vision_transformer import SwinUnet as ViT_seg
-from trainer import trainer_synapse
 from config import get_config
 ### modify
 parser = argparse.ArgumentParser()
@@ -110,7 +108,7 @@ if __name__ == "__main__":
 
     dataset_config = {
         'flare22': {
-            'Dataset': Synapse_dataset,
+            'Dataset': CardiacDataset,
             'root_path': './',
             'data_csv': './lists/datasets_flaretest.csv',
             'dataset_id': 0,
@@ -119,7 +117,7 @@ if __name__ == "__main__":
             'z_spacing': 1
         },
         'amos': {
-            'Dataset': Synapse_dataset,
+            'Dataset': CardiacDataset,
             'root_path': './',
             'data_csv': './lists/datasets_amostest.csv',
             'dataset_id': 1,
@@ -128,7 +126,7 @@ if __name__ == "__main__":
             'z_spacing': 1
         },
         'word': {
-            'Dataset': Synapse_dataset,
+            'Dataset': CardiacDataset,
             'root_path': './',
             'data_csv': './lists/datasets_wordtest.csv',
             'dataset_id': 2,

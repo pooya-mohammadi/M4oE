@@ -3,6 +3,7 @@ import os
 import random
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.backends.cudnn as cudnn
 
@@ -78,6 +79,7 @@ parser.add_argument('--amp-opt-level', type=str, default='O1', choices=['O0', 'O
                     help='mixed precision opt level, if O0, no amp is used')
 
 parser.add_argument('--tag', help='tag of experiment')
+parser.add_argument('--num_workers', default=0)
 
 parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
 
@@ -112,38 +114,38 @@ if __name__ == '__main__':
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
 
-    dataset_config = {
-        'flare22': {
-            'root_path': './',
-            'dataset_id': 0,
-            'num_classes': 14,
-            "predict_head": 0
-        },
-        'ALTAS': {
-            'root_path': './',
-            'dataset_id': 1,
-            'num_classes': 3,
-            'predict_head': 1
-        },
-        'AMOS': {
-            'root_path': './',
-            'dataset_id': 2,
-            'num_classes': 16,
-            'predict_head': 2
-        },
-    }
+    # dataset_config = {
+    #     'flare22': {
+    #         'root_path': './',
+    #         'dataset_id': 0,
+    #         'num_classes': 14,
+    #         "predict_head": 0
+    #     },
+    #     'ALTAS': {
+    #         'root_path': './',
+    #         'dataset_id': 1,
+    #         'num_classes': 3,
+    #         'predict_head': 1
+    #     },
+    #     'AMOS': {
+    #         'root_path': './',
+    #         'dataset_id': 2,
+    #         'num_classes': 16,
+    #         'predict_head': 2
+    #     },
+    # }
     ### cross datasets ### WARNING change above config about dataset_config
     # args.data_csv = './lists/datasets_v9.csv'
     # args.val_data_csv = './lists/datasets_multi_val.csv'
     ### multimodal datasets ### WARNING change above config about dataset_config
-    args.data_csv = './lists/datasets.csv'
-    args.val_data_csv = './lists/datasets_multi_val.csv'
+    args.data_csv = './lists/datasets_train.csv'
+    args.val_data_csv = './lists/datasets_val.csv'
 
     args.batch_size = 36
     args.output_dir = './exp_'
     # Create a list to store the number of classes for each dataset
-    num_classes_per_dataset = [dataset_config[name]['num_classes'] for name in dataset_config]
-
+    # num_classes_per_dataset = [dataset_config[name]['num_classes'] for name in dataset_config]
+    num_classes_per_dataset = pd.read_csv(args.data_csv).groupby("predict_head").n_classes.first().values.tolist()
     # Create and initialize the model outside the loop
     net = SwinUnet(config, img_size=args.img_size, num_classes=num_classes_per_dataset).cuda()
     net.load_from(config)
