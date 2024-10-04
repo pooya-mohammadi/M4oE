@@ -2,7 +2,7 @@ from dataset_synapse import CardiacDataset, RandomGenerator
 import logging
 import os
 import sys
-
+from torch.nn import functional as F
 import numpy as np
 import torch
 import torch.nn as nn
@@ -73,9 +73,9 @@ def trainer_synapse(args, model, snapshot_path):
 
     model.train()
 
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA is not available. Please check your setup.")
-    device = torch.device("cuda")
+    # if not torch.cuda.is_available():
+    #     raise RuntimeError("CUDA is not available. Please check your setup.")
+    device = args.device
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ce_loss_functions = {}
@@ -106,8 +106,9 @@ def trainer_synapse(args, model, snapshot_path):
         for i_batch, sampled_batch in enumerate(trainloader):
             if sampled_batch is None:
                 continue
-            image_batch, label_batch, predict_head, n_classes = sampled_batch['image'], sampled_batch[
-                'label'], sampled_batch['predict_head'], sampled_batch['n_classes']
+            image_batch, label_batch, predict_head, n_classes = (
+                sampled_batch['image'], sampled_batch['label'], sampled_batch['predict_head'],
+                sampled_batch['n_classes'])
 
             # Ensure dataset_id and predict_head are tensors and send to device
             # if not isinstance(dataset_id, torch.Tensor):
@@ -129,12 +130,13 @@ def trainer_synapse(args, model, snapshot_path):
                 dice_loss_func = dice_loss_functions[num_classes_i]
                 output_i = outputs[i, :n_classes[i].item()].unsqueeze(0)
 
-                labels_i = label_batch[i].long().unsqueeze(0)
+                labels_i = F.one_hot(label_batch[i].long(), num_classes=int(num_classes_i)).transpose(0, 2).transpose(1,
+                                                                                                                      2).unsqueeze(0).to(torch.float32)
                 # print(labels_i.unique(), n_classes[i].item())
                 loss_ce_i = ce_loss_func(output_i, labels_i)
 
                 # print(labels_i.unique(),n_classes[i].item())
-
+                labels_i = label_batch[i].long().unsqueeze(0)
                 loss_dice_i = dice_loss_func(output_i, labels_i, softmax=True)
 
                 loss_ce += loss_ce_i
@@ -195,8 +197,8 @@ def trainer_synapse(args, model, snapshot_path):
                     if sampled_batch is None:
                         continue
                     image_batch, label_batch, predict_head, n_classes = (
-                    sampled_batch['image'], sampled_batch['label'], sampled_batch['predict_head'],
-                    sampled_batch['n_classes'])
+                        sampled_batch['image'], sampled_batch['label'], sampled_batch['predict_head'],
+                        sampled_batch['n_classes'])
 
                     # Ensure dataset_id and predict_head are tensors and send to device
                     # if not isinstance(dataset_id, torch.Tensor):

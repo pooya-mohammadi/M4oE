@@ -15,7 +15,7 @@ def npz_csv(csv_task_name='datasets_v217'):
             # 'img_idx': 0,
             # 'label_idx': 1,
             # 'dataset_id': 1,
-            'num_classes': 3,
+            'num_classes': 3 + 1,
             'predict_head': 1
         },
         'MRI_MM': {
@@ -24,7 +24,7 @@ def npz_csv(csv_task_name='datasets_v217'):
             # 'img_idx': 0,
             # 'label_idx': 1,
             # 'dataset_id': 0,
-            'num_classes': 3,
+            'num_classes': 3 + 1,
             'predict_head': 0
         },
     }
