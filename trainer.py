@@ -18,7 +18,6 @@ from utils import DiceLoss
 
 def custom_collate_fn(batch):
     batch = [b for b in batch if b is not None]
-
     if len(batch) == 0:
         return None
 
