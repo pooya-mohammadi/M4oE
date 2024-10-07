@@ -4,3 +4,5 @@ pretrained_ckpt
 *.jpg
 *.npy
 *.npz
+*.nii.gz
+*.nii
