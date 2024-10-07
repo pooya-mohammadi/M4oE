@@ -123,7 +123,7 @@ class CardiacDataset(Dataset):
 
         sample = {
             'image': np.array(Image.open(img_dir)),
-            'label': np.load(label_dir)['arr_0'] if label_dir is not None else None,
+            'label': np.load(label_dir)['arr_0'].astype(np.int32) if label_dir is not None else None,
             'predict_head': predict_head,
             'n_classes': n_classes,
             'case_name': split(img_dir)[-1].replace(".npz", "").replace(".jpg", "")
