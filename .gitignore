@@ -1,2 +1,6 @@
 datasets/CT
 pretrained_ckpt
+.idea
+*.jpg
+*.npy
+*.npz
