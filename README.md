@@ -58,5 +58,5 @@ sh test.sh or python test.py --cfg configs/swin_tiny_patch4_window7_224_lite.yam
 # Trials
 First try:
 ```commandline
-python train.py --cfg configs/dataset.yaml --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 256 --num_workers 64
+CUDA_AVAIABLE_DEVICES=2 python train.py --cfg configs/dataset.yaml --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 256 --num_workers 64
 ```

@@ -79,7 +79,7 @@ parser.add_argument('--amp-opt-level', type=str, default='O1', choices=['O0', 'O
                     help='mixed precision opt level, if O0, no amp is used')
 
 parser.add_argument('--tag', help='tag of experiment')
-parser.add_argument('--num_workers', default=0)
+parser.add_argument('--num_workers', default=0, type=int)
 parser.add_argument('--device', default="cuda:0")
 
 parser.add_argument('--eval', action='store_true', help='Perform evaluation only')

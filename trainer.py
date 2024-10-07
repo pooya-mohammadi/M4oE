@@ -43,13 +43,11 @@ def trainer_synapse(args, model, snapshot_path):
     db_train = CardiacDataset(
         csv_file_path=args.data_csv,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
-        modes='train'
     )
 
     db_val = CardiacDataset(
         csv_file_path=args.val_data_csv,  # Assuming there is a csv file for training data
         transform=transforms.Compose(transforms_list),
-        modes='val'
     )
     trainloader = DataLoader(db_train,
                              batch_size=batch_size,

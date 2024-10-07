@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 def npz_csv(csv_task_name='datasets_v217'):
     datasets_config = {
         'CT_CORONARY': {
-            'img_dir': '/home/aicvi/projects/Swin-MAE-datasets/images/ct_coronary',
-            'label_dir': '/home/aicvi/projects/Swin-MAE-datasets/labels/ct_coronary',
+            'img_dir': '../Swin-MAE-datasets/images/ct_coronary',
+            'label_dir': '../Swin-MAE-datasets/labels/ct_coronary',
             # 'img_idx': 0,
             # 'label_idx': 1,
             # 'dataset_id': 1,
@@ -19,8 +19,8 @@ def npz_csv(csv_task_name='datasets_v217'):
             'predict_head': 1
         },
         'MRI_MM': {
-            'img_dir': '/home/aicvi/projects/Swin-MAE-datasets/images/mri_mm',
-            'label_dir': '/home/aicvi/projects/Swin-MAE-datasets/labels/mri_mm',
+            'img_dir': '../Swin-MAE-datasets/images/mri_mm',
+            'label_dir': '../Swin-MAE-datasets/labels/mri_mm',
             # 'img_idx': 0,
             # 'label_idx': 1,
             # 'dataset_id': 0,
