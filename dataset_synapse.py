@@ -119,7 +119,10 @@ class CardiacDataset(Dataset):
                 label = np.load(label_dir)['arr_0'].astype(np.int32)
             elif label_dir.endswith(".jpg"):
                 label = np.array(Image.open(label_dir))
-                label = (label / label.max() * n_classes).astype(np.uint8)
+                if label.max() == 0:
+                    label = label.astype(np.int32)
+                else:
+                    label = (label / label.max() * (n_classes - 1)).astype(np.int32)
             else:
                 raise ValueError(f"input {label_dir} is not valid")
         else:

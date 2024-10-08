@@ -61,5 +61,5 @@ First try:
 python make_dataset_csv.py --name datasets_train --train
 python make_dataset_csv.py --name datasets_val 
 
-CUDA_AVAIABLE_DEVICES=2 python train.py --cfg configs/dataset.yaml --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 256 --num_workers 64
+CUDA_AVAIABLE_DEVICES=2 python train.py --cfg configs/dataset.yaml --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 256 --num_workers 64 --patience 25
 ```

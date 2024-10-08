@@ -90,12 +90,12 @@ def trainer_synapse(args, model, snapshot_path):
     max_epoch = args.max_epochs
     max_iterations = args.max_epochs * len(trainloader)  # max_epoch = max_iterations // len(trainloader) + 1
     logging.info("{} iterations per epoch. {} max iterations ".format(len(trainloader), max_iterations))
-    best_performance = 0.0
+    # best_performance = 0.0
     iterator = tqdm(range(max_epoch), ncols=70)
 
     # early stopping
     val_loss_min = np.Inf
-    patience = 7
+    patience = args.patience
     patience_counter = 0
 
     # train loop
@@ -127,8 +127,10 @@ def trainer_synapse(args, model, snapshot_path):
                 dice_loss_func = dice_loss_functions[num_classes_i]
                 output_i = outputs[i, :n_classes[i].item()].unsqueeze(0)
 
-                labels_i = F.one_hot(label_batch[i].long(), num_classes=int(num_classes_i)).transpose(0, 2).transpose(1,
-                                                                                                                      2).unsqueeze(0).to(torch.float32)
+                labels_i = F.one_hot(label_batch[i].long(),
+                                     num_classes=int(
+                                         num_classes_i)).transpose(0, 2).transpose(1,
+                                                                                   2).unsqueeze(0).to(torch.float32)
                 # print(labels_i.unique(), n_classes[i].item())
                 loss_ce_i = ce_loss_func(output_i, labels_i)
 
