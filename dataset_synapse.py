@@ -1,6 +1,6 @@
-import random
-from os.path import split, exists
+from os.path import split
 
+import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
@@ -8,7 +8,6 @@ from scipy import ndimage
 from scipy.ndimage import zoom
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-import numpy as np
 
 
 def random_rot_flip(image, label=None):
@@ -38,16 +37,16 @@ class RandomGenerator:
     def __call__(self, sample):
         image, label, predict_head, n_classes = (sample['image'], sample['label'],
                                                  sample['predict_head'], sample['n_classes'])
-        if label is not None:
-            if random.random() > 0.5:
-                image, label = random_rot_flip(image, label)
-            elif random.random() > 0.5:
-                image, label = random_rotate(image, label)
-        else:
-            if random.random() > 0.5:
-                image, _ = random_rot_flip(image)
-            elif random.random() > 0.5:
-                image, _ = random_rotate(image)
+        # if label is not None:
+        #     if random.random() > 0.5:
+        #         image, label = random_rot_flip(image, label)
+        #     elif random.random() > 0.5:
+        #         image, label = random_rotate(image, label)
+        # else:
+        #     if random.random() > 0.5:
+        #         image, _ = random_rot_flip(image)
+        #     elif random.random() > 0.5:
+        #         image, _ = random_rotate(image)
 
         x, y, *z = image.shape
         if x != self.output_size[0] or y != self.output_size[1]:
@@ -115,15 +114,20 @@ class CardiacDataset(Dataset):
         predict_head = row['predict_head']
         n_classes = row['n_classes']
 
-        # image =
-        # label =
-
-        # filename = os.path.basename(data_dir)
-        # case_name = filename.split('.')[0]
+        if label_dir is not None:
+            if label_dir.endswith(".npz"):
+                label = np.load(label_dir)['arr_0'].astype(np.int32)
+            elif label_dir.endswith(".jpg"):
+                label = np.array(Image.open(label_dir))
+                label = (label / label.max() * n_classes).astype(np.uint8)
+            else:
+                raise ValueError(f"input {label_dir} is not valid")
+        else:
+            label = None
 
         sample = {
             'image': np.array(Image.open(img_dir)),
-            'label': np.load(label_dir)['arr_0'].astype(np.int32) if label_dir is not None else None,
+            'label': label,
             'predict_head': predict_head,
             'n_classes': n_classes,
             'case_name': split(img_dir)[-1].replace(".npz", "").replace(".jpg", "")
@@ -132,7 +136,7 @@ class CardiacDataset(Dataset):
         if self.transform:
             sample = self.transform(sample)
 
-        sample = {k: v for k,v in sample.items() if v is not None}
+        sample = {k: v for k, v in sample.items() if v is not None}
 
         return sample
 

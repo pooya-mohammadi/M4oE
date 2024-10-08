@@ -8,6 +8,8 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--split", action="store_true")
 parser.add_argument("--name", default="datasets", type=str)
+parser.add_argument("--img_ext", default=".jpg", type=str)
+parser.add_argument("--seg_ext", default=".jpg", type=str)
 parser.add_argument("--train", action="store_true")
 
 args = parser.parse_args()
@@ -39,8 +41,8 @@ def npz_csv(csv_task_name='datasets_v217'):
 
     for dataset_name, config in datasets_config.items():
 
-        data_files = DirUtils.list_dir_full_path(config['img_dir'], interest_extensions=".jpg", return_dict=True)
-        seg_files = DirUtils.list_dir_full_path(config['label_dir'], interest_extensions=".npz", return_dict=True)
+        data_files = DirUtils.list_dir_full_path(config['img_dir'], interest_extensions=args.img_ext, return_dict=True)
+        seg_files = DirUtils.list_dir_full_path(config['label_dir'], interest_extensions=args.seg_ext, return_dict=True)
 
         for seg_file_key in seg_files.keys():
             if seg_file_key not in data_files:
