@@ -63,3 +63,9 @@ python make_dataset_csv.py --name datasets_val
 
 CUDA_AVAIABLE_DEVICES=2 python train.py --cfg configs/dataset.yaml --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 256 --num_workers 64 --patience 25
 ```
+
+
+# Inference:
+```commandline
+python inference_niftti.py --input /media/aicvi/11111bdb-a0c7-4342-9791-36af7eb70fc0/NNUNET_OUTPUT/nnunet_raw/Dataset001_mm/imagesTr/B0N3W8-2_0000.nii.gz --modality mri_mm --copy --save_seg
+```

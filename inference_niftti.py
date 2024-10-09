@@ -54,7 +54,7 @@ parser.add_argument('--num_workers', default=0, type=int)
 parser.add_argument("--remove", action="store_true", help="removes the output ")
 parser.add_argument("--copy", action="store_true", help="copy input to current dir")
 parser.add_argument("--save_seg", action="store_true", help="save seg output")
-parser.add_argument("--seg_path", default="segments")
+parser.add_argument("--seg_path", default="")
 
 args = parser.parse_args()
 config = get_config(args)
@@ -71,10 +71,16 @@ def inference(model):
     model.eval()
     # h, w = 224, 224
     # metric_list = 0.0
-    output_dir = DirUtils.split_extension(split(args.input)[-1], suffix='_split').replace('.nii.gz', '')
+    output_dir = DirUtils.split_extension(split(args.input)[-1], suffix='_split', current_extension=".nii.gz").replace(
+        '.nii.gz', '')
+
     output = args.output or DirUtils.split_extension(split(args.input)[-1],
                                                      suffix='_output', current_extension=".nii.gz")
-    os.system(f"med2image -i {args.input} -d {output_dir}")
+    if args.save_seg:
+        seg_path = args.seg_path if args.seg_path else output.replace(".nii.gz", "")
+    out_res_ = os.system(f"med2image -i {args.input} -d {output_dir}")
+    if out_res_ != 0:
+        raise RuntimeError(f"os.system raised error: {out_res_}")
     samples = [{
         "img_dir": item,
         'n_classes': 3 + 1,
@@ -88,7 +94,7 @@ def inference(model):
     #     "label_dir": None
     # }
     if args.save_seg:
-        os.makedirs(args.seg_path, exist_ok=True)
+        DirUtils.remove_create(seg_path)
     dataset = CardiacDataset(
         csv_file_path=samples,  # Assuming there is a csv file for training data
     )
@@ -104,7 +110,7 @@ def inference(model):
         out = (out / out.max() * 255).astype(np.uint8)
         if args.save_seg:
             img = Image.fromarray(out)
-            img.save(join(args.seg_path, f"{i_batch:04}.jpg"))
+            img.save(join(seg_path, f"{i_batch:04}.jpg"))
         output_files.append(out)
     nib_array, nib_img = NIBUtils.get_array_img(args.input)
     output_files = np.concatenate(
