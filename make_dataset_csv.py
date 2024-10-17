@@ -11,23 +11,24 @@ parser.add_argument("--name", default="datasets", type=str)
 parser.add_argument("--img_ext", default=".npz", type=str)
 parser.add_argument("--seg_ext", default=".npz", type=str)
 parser.add_argument("--train", action="store_true")
+parser.add_argument("--nnunet",
+                    default="/media/aicvi/11111bdb-a0c7-4342-9791-36af7eb70fc0/NNUNET_OUTPUT/nnunet_preprocessed/")
 
 args = parser.parse_args()
 
 seed = 1234
 
-nnunet_preprocess_path = "/media/aicvi/11111bdb-a0c7-4342-9791-36af7eb70fc0/NNUNET_OUTPUT/nnunet_preprocessed/"
 
 
 def npz_csv():
     datasets_config = {
         'CT_CORONARY': {
-            'data_dir': f'{nnunet_preprocess_path}/Dataset002_china_narco/nnUNetPlans_2d',
+            'data_dir': f'{args.nnunet}/Dataset002_china_narco/nnUNetPlans_2d',
             'num_classes': 3 + 1,  # plus background
             'predict_head': 1
         },
         'MRI_MM': {
-            'data_dir': f'{nnunet_preprocess_path}/Dataset001_mm/nnUNetPlans_2d',
+            'data_dir': f'{args.nnunet}/Dataset001_mm/nnUNetPlans_2d',
             'num_classes': 3 + 1,  # plus background
             'predict_head': 0
         },

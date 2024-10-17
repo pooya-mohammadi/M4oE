@@ -35,8 +35,6 @@ parser.add_argument('--max_iterations', type=int,
 parser.add_argument('--max_epochs', type=int,
                     default=100, help='maximum epoch number to train')
 
-parser.add_argument('--batch_size', type=int, help='batch_size per gpu')
-
 parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
 
 parser.add_argument('--deterministic', type=int, default=1,
@@ -81,6 +79,7 @@ parser.add_argument('--amp-opt-level', type=str, default='O1', choices=['O0', 'O
 parser.add_argument('--tag', help='tag of experiment')
 parser.add_argument('--num_workers', default=0, type=int)
 parser.add_argument('--patience', default=10, type=int)
+parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--device', default="cuda:0")
 
 parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
@@ -99,51 +98,28 @@ if __name__ == '__main__':
     # print(f"The model has {count_parameters(net):,} trainable parameters")
     # net.load_from(config)
     ### Testing pretrained model ###
-    import torch.multiprocessing as mp
+    # import torch.multiprocessing as mp
 
-    if mp.get_start_method(allow_none=True) is None:
-        mp.set_start_method('spawn', force=True)
+    # if mp.get_start_method(allow_none=True) is None:
+    #     mp.set_start_method('spawn', force=True)
 
-    if not args.deterministic:
-        cudnn.benchmark = True
-        cudnn.deterministic = False
-    else:
-        cudnn.benchmark = False
-        cudnn.deterministic = True
+    # if not args.deterministic:
+    cudnn.benchmark = True
+    cudnn.deterministic = False
+    # else:
+    #     cudnn.benchmark = False
+    #     cudnn.deterministic = True
     CUDA_LAUNCH_BLOCKING = 1
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-
-    # dataset_config = {
-    #     'flare22': {
-    #         'root_path': './',
-    #         'dataset_id': 0,
-    #         'num_classes': 14,
-    #         "predict_head": 0
-    #     },
-    #     'ALTAS': {
-    #         'root_path': './',
-    #         'dataset_id': 1,
-    #         'num_classes': 3,
-    #         'predict_head': 1
-    #     },
-    #     'AMOS': {
-    #         'root_path': './',
-    #         'dataset_id': 2,
-    #         'num_classes': 16,
-    #         'predict_head': 2
-    #     },
-    # }
-    ### cross datasets ### WARNING change above config about dataset_config
-    # args.data_csv = './lists/datasets_v9.csv'
-    # args.val_data_csv = './lists/datasets_multi_val.csv'
-    ### multimodal datasets ### WARNING change above config about dataset_config
+    # random.seed(args.seed)
+    # np.random.seed(args.seed)
+    # torch.manual_seed(args.seed)
+    # torch.cuda.manual_seed(args.seed)
+    #
     args.data_csv = './lists/datasets_train.csv'
     args.val_data_csv = './lists/datasets_val.csv'
+
     args.device = "cpu" if not torch.cuda.is_available() else args.device
-    args.batch_size = 36
+    # args.batch_size = 64
     args.output_dir = './exp_'
     # Create a list to store the number of classes for each dataset
     # num_classes_per_dataset = [dataset_config[name]['num_classes'] for name in dataset_config]
@@ -152,9 +128,9 @@ if __name__ == '__main__':
     net = SwinUnet(config, img_size=args.img_size, num_classes=num_classes_per_dataset).to(device=args.device)
     net.load_from(config)
     args.num_classes = num_classes = num_classes_per_dataset
-    if args.batch_size != 24 and args.batch_size % 6 == 0:
-        args.base_lr *= args.batch_size / 24
+    # if args.batch_size != 24 and args.batch_size % 6 == 0:
+    #     args.base_lr *= args.batch_size / 24
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-
+    print(f"Input args: {args}, config: {config}")
     trainer_synapse(args, net, args.output_dir)

@@ -1,18 +1,21 @@
-from dataset_synapse import CardiacDataset, RandomGenerator
 import logging
 import os
 import sys
-from torch.nn import functional as F
+from typing import Any
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from torchvision import transforms
 from tqdm import tqdm
 
+from dataset_nnunet import NNUNetCardiacDataset, NNUnetCreator
+from dataset_synapse import RandomGenerator
 from utils import DiceLoss
 
 
@@ -34,22 +37,23 @@ def trainer_synapse(args, model, snapshot_path):
     num_classes = args.num_classes
     batch_size = args.batch_size * args.n_gpu
 
-    transforms_list = [
-        RandomGenerator(output_size=[args.img_size, args.img_size]),
-        # NormalizeSlice(),
-    ]
+    # transforms_list = [
+    #     RandomGenerator(output_size=[args.img_size, args.img_size]),
+    #     NormalizeSlice(),
+    # ]
 
+    tr_transform, val_transform = NNUnetCreator(patch_size=(args.img_size, args.img_size)).get_transforms()
     # max_iterations = args.max_iterations
-    db_train = CardiacDataset(
+    dataset_train = NNUNetCardiacDataset(
         csv_file_path=args.data_csv,  # Assuming there is a csv file for training data
-        transform=transforms.Compose(transforms_list),
+        transform=tr_transform,
     )
 
-    db_val = CardiacDataset(
+    dataset_val = NNUNetCardiacDataset(
         csv_file_path=args.val_data_csv,  # Assuming there is a csv file for training data
-        transform=transforms.Compose(transforms_list),
+        transform=val_transform,
     )
-    trainloader = DataLoader(db_train,
+    trainloader = DataLoader(dataset_train,
                              batch_size=batch_size,
                              shuffle=True,
                              num_workers=args.num_workers,
@@ -57,7 +61,7 @@ def trainer_synapse(args, model, snapshot_path):
                              collate_fn=custom_collate_fn,
                              )
 
-    valloader = DataLoader(db_val,
+    valloader = DataLoader(dataset_val,
                            batch_size=batch_size,
                            shuffle=False,
                            num_workers=args.num_workers,
@@ -101,6 +105,7 @@ def trainer_synapse(args, model, snapshot_path):
     # train loop
     for epoch_num in iterator:
         for i_batch, sampled_batch in enumerate(trainloader):
+            sampled_batch: dict[str, Any] | None
             if sampled_batch is None:
                 continue
             image_batch, label_batch, predict_head, n_classes = (
@@ -128,9 +133,7 @@ def trainer_synapse(args, model, snapshot_path):
                 output_i = outputs[i, :n_classes[i].item()].unsqueeze(0)
 
                 labels_i = F.one_hot(label_batch[i].long(),
-                                     num_classes=int(
-                                         num_classes_i)).transpose(0, 2).transpose(1,
-                                                                                   2).unsqueeze(0).to(torch.float32)
+                                     num_classes=int(num_classes_i)).transpose(0, 2).transpose(1, 2).unsqueeze(0).to(torch.float32)
                 # print(labels_i.unique(), n_classes[i].item())
                 loss_ce_i = ce_loss_func(output_i, labels_i)
 
@@ -160,7 +163,7 @@ def trainer_synapse(args, model, snapshot_path):
             writer.add_scalar('info/loss_ce', loss_ce, iter_num)
             writer.add_scalar('info/loss_dice', loss_dice, iter_num)
             logging.info(
-                'iteration %d : loss : %f, loss_ce: %f Dice: %f' % (
+                'iteration %d : loss : %f, loss_ce: %f Dice Loss: %f' % (
                     iter_num, loss.item(), loss_ce.item(), loss_dice.item()))
 
             if iter_num % 20 == 0:
