@@ -1,8 +1,9 @@
 import time
+from collections import defaultdict
 
 import torch
 import random
-from os.path import split
+from os.path import split, join, exists
 from typing import Tuple, Union, List
 
 import numpy as np
@@ -28,6 +29,7 @@ from batchgeneratorsv2.transforms.utils.pseudo2d import Convert3DTo2DTransform, 
 from batchgeneratorsv2.transforms.utils.random import RandomTransform
 from batchgeneratorsv2.transforms.utils.remove_label import RemoveLabelTansform
 from batchgeneratorsv2.transforms.utils.seg_to_regions import ConvertSegmentationToRegionsTransform
+from deep_utils import DirUtils
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
@@ -256,6 +258,29 @@ class NNUNetCardiacDataset(Dataset):
             self.dataframe = pd.DataFrame([csv_file_path], columns=["data_dir", "predict_head", "n_classes"])
         else:
             self.dataframe = pd.read_csv(csv_file_path)
+
+        # load all the samples for split
+        row = self.dataframe.iloc[0]
+        data_dir = row['data_dir']
+        filedir, _ = split(data_dir)
+        split_path = filedir + "_split"
+        if exists(split_path):
+            data = DirUtils.list_dir_full_path(split_path, return_dict=True, interest_extensions=".npz")
+            seg_img_samples = defaultdict(dict)
+            for key, val in data.items():
+                item = key.replace("_seg", "").replace("_img", "")
+                if val.endswith("_seg.npz"):
+                    seg_img_samples[item]['seg'] = val
+                else:
+                    seg_img_samples[item]['img'] = val
+
+            file_samples = defaultdict(list)
+            for key, val in seg_img_samples.items():
+                item = key.split("_")[0]
+                file_samples[item].append(val)
+        else:
+            file_samples = None
+        self.file_samples = file_samples
         self.verbose = verbose
 
     def __len__(self):
@@ -268,18 +293,38 @@ class NNUNetCardiacDataset(Dataset):
         predict_head = row['predict_head']
         n_classes = row['n_classes']
 
-        data = np.load(data_dir)
-        img = data['data'].squeeze(0)
-        seg = data['seg'].squeeze(0)
-        if len(img.shape) == 3:
-            r = random.randint(0, img.shape[0] - 1)
-            img = img[r]
-            seg = seg[r]
+        # split_path = filedir + "_split"
+        if self.file_samples is not None:
+            filename = split(data_dir)[-1].replace(".npz", "")
+            sample = random.choice(self.file_samples[filename])
+
+            # indices = [item.replace("_seg.npz", "").replace("_img.npz", "").split("_")[-1] for item in
+            #            DirUtils.list_dir_full_path(split_path, get_full_path=False, interest_extensions=".npz") if
+            #            item.startswith(filename.replace(".npz", ""))]
+            # index = random.choice(indices)
+            # img_path = join(split_path, f"{DirUtils.split_extension(filename, suffix=f'_{index}_img')}")
+            # seg_path = join(split_path, f"{DirUtils.split_extension(filename, suffix=f'_{index}_seg')}")
+            #
+            img_path = sample['img']
+            seg_path = sample['seg']
+            img = np.load(img_path)['arr_0']
+            seg = np.load(seg_path)['arr_0']
+        else:
+            data = np.load(data_dir)
+            img = data['data'].squeeze(0)
+            seg = data['seg'].squeeze(0)
+            if len(img.shape) == 3:
+                r = random.randint(0, img.shape[0] - 1)
+                img = img[r]
+                seg = seg[r]
 
         if self.transform:
             img = torch.from_numpy(img).float()
             seg = torch.from_numpy(seg).to(torch.int16)
-            tmp = self.transform(**{'image': img.unsqueeze(0), 'segmentation': seg.unsqueeze(0)})
+            if len(img.shape) == 3:
+                tmp = self.transform(**{'image': img, 'segmentation': seg})
+            else:
+                tmp = self.transform(**{'image': img.unsqueeze(0), 'segmentation': seg.unsqueeze(0)})
             img = tmp['image']
             seg = tmp['segmentation'].squeeze(0)
         sample = {
@@ -323,25 +368,25 @@ if __name__ == '__main__':
         csv_file_path="lists/datasets_val.csv",  # Assuming there is a csv file for training data
         transform=val_transform,
     )
-    trainloader = DataLoader(dataset_train,
-                             batch_size=4,
-                             shuffle=True,
-                             num_workers=2,
-                             prefetch_factor=1,
-                             # pin_memory=True,
-                             # collate_fn=custom_collate_fn,
-                             )
+    # trainloader = DataLoader(dataset_train,
+    #                          batch_size=4,
+    #                          shuffle=True,
+    #                          num_workers=2,
+    #                          prefetch_factor=1,
+    #                          # pin_memory=True,
+    #                          # collate_fn=custom_collate_fn,
+    #                          )
 
-    # valloader = DataLoader(dataset_val,
-    #                        batch_size=8,
-    #                        shuffle=False,
-    #                        num_workers=8,
-    #                        pin_memory=True,
-    #                        # collate_fn=custom_collate_fn,
-    #                        )
+    valloader = DataLoader(dataset_val,
+                           batch_size=8,
+                           shuffle=False,
+                           num_workers=2,
+                           pin_memory=True,
+                           # collate_fn=custom_collate_fn,
+                           )
     tic = time.time()
     print("Starting to load data")
-    for i in trainloader:
+    for i in valloader:
         print(i['image'].shape)
         break
     print("Overall: ", time.time() - tic)

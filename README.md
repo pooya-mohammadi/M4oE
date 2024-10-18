@@ -65,6 +65,10 @@ python make_dataset_csv.py --name datasets_val --nnunet /scratch/isaac/nnunet_pr
 python make_dataset_csv.py --name datasets_train --train 
 python make_dataset_csv.py --name datasets_val 
 
+# Add --split to split the data!
+python make_dataset_csv.py --name datasets_train --train --nnunet /scratch/isaac/nnunet_projects/nnunet_preprocessed --split
+python make_dataset_csv.py --name datasets_val --nnunet /scratch/isaac/nnunet_projects/nnunet_preprocessed --split
+
 CUDA_AVAIABLE_DEVICES=2 python train.py --cfg configs/dataset.yaml --max_epochs 150 --output_dir output  --img_size 224 --base_lr 0.05 --batch_size 256 --num_workers 64 --patience 25
 ```
 

@@ -65,9 +65,9 @@ def process_file(config, split_path, filepath):
             img_ = img[:, z_index, ...]
             seg_ = seg[:, z_index, ...]
             img_path = join(split_path,
-                            f"{DirUtils.split_extension(split(filepath)[-1], suffix=f"_{z_index}_img")}")
+                            f"{DirUtils.split_extension(split(filepath)[-1], suffix=f'_{z_index:04}_img')}")
             seg_path = join(split_path,
-                            f"{DirUtils.split_extension(split(filepath)[-1], suffix=f"_{z_index}_seg")}")
+                            f"{DirUtils.split_extension(split(filepath)[-1], suffix=f'_{z_index:04}_seg')}")
             if not exists(img_path) or not exists(seg_path):
                 np.savez(img_path, img_)  # noqa
                 np.savez(seg_path, seg_)  # noqa
