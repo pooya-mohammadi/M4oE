@@ -69,8 +69,8 @@ def process_file(config, split_path, filepath):
             seg_path = join(split_path,
                             f"{DirUtils.split_extension(split(filepath)[-1], suffix=f'_{z_index:04}_seg')}")
             if not exists(img_path) or not exists(seg_path):
-                np.savez(img_path, img_)  # noqa
-                np.savez(seg_path, seg_)  # noqa
+                np.savez(img_path, img_)
+                np.savez(seg_path, seg_)
     sample = [
         filepath,
         config['predict_head'],

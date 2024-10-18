@@ -296,7 +296,10 @@ class NNUNetCardiacDataset(Dataset):
         # split_path = filedir + "_split"
         if self.file_samples is not None:
             filename = split(data_dir)[-1].replace(".npz", "")
-            sample = random.choice(self.file_samples[filename])
+            try:
+                sample = random.choice(self.file_samples[filename])
+            except:
+                print(filename)
 
             # indices = [item.replace("_seg.npz", "").replace("_img.npz", "").split("_")[-1] for item in
             #            DirUtils.list_dir_full_path(split_path, get_full_path=False, interest_extensions=".npz") if
@@ -388,5 +391,5 @@ if __name__ == '__main__':
     print("Starting to load data")
     for i in valloader:
         print(i['image'].shape)
-        break
+        # break
     print("Overall: ", time.time() - tic)
