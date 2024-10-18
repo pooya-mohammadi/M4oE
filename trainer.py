@@ -59,6 +59,7 @@ def trainer_cardiac(args, model, snapshot_path):
                              num_workers=args.num_workers,
                              pin_memory=True,
                              collate_fn=custom_collate_fn,
+                             prefetch_factor=args.prefetch_factor
                              )
 
     valloader = DataLoader(dataset_val,
@@ -67,6 +68,7 @@ def trainer_cardiac(args, model, snapshot_path):
                            num_workers=args.num_workers,
                            pin_memory=True,
                            collate_fn=custom_collate_fn,
+                           prefetch_factor=args.prefetch_factor
                            )
 
     if args.n_gpu > 1:
@@ -133,7 +135,8 @@ def trainer_cardiac(args, model, snapshot_path):
                 output_i = outputs[i, :n_classes[i].item()].unsqueeze(0)
 
                 labels_i = F.one_hot(label_batch[i].long(),
-                                     num_classes=int(num_classes_i)).transpose(0, 2).transpose(1, 2).unsqueeze(0).to(torch.float32)
+                                     num_classes=int(num_classes_i)).transpose(0, 2).transpose(1, 2).unsqueeze(0).to(
+                    torch.float32)
                 # print(labels_i.unique(), n_classes[i].item())
                 loss_ce_i = ce_loss_func(output_i, labels_i)
 

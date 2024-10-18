@@ -1,3 +1,5 @@
+import time
+
 import torch
 import random
 from os.path import split
@@ -246,7 +248,7 @@ class NNUnetCreator:
 
 class NNUNetCardiacDataset(Dataset):
 
-    def __init__(self, csv_file_path, transform=None):
+    def __init__(self, csv_file_path, transform=None, verbose: bool = False):
         self.transform = transform
         if isinstance(csv_file_path, list):
             self.dataframe = pd.DataFrame(csv_file_path, columns=["data_dir", "predict_head", "n_classes"])
@@ -254,11 +256,13 @@ class NNUNetCardiacDataset(Dataset):
             self.dataframe = pd.DataFrame([csv_file_path], columns=["data_dir", "predict_head", "n_classes"])
         else:
             self.dataframe = pd.read_csv(csv_file_path)
+        self.verbose = verbose
 
     def __len__(self):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
+        tic = time.time()
         row = self.dataframe.iloc[idx]
         data_dir = row['data_dir']
         predict_head = row['predict_head']
@@ -286,7 +290,8 @@ class NNUNetCardiacDataset(Dataset):
             'case_name': split(data_dir)[-1].replace(".npz", "").replace(".jpg", "").replace(".npy", "")
         }
         sample = {k: v for k, v in sample.items() if v is not None}
-
+        if self.verbose:
+            print(f"Loading {data_dir} took: {time.time() - tic}")
         return sample
 
 
@@ -308,29 +313,35 @@ if __name__ == '__main__':
     tr_transform, val_transform = NNUnetCreator(patch_size=(img_size, img_size)).get_transforms()
     # max_iterations = args.max_iterations
     dataset_train = NNUNetCardiacDataset(
+        verbose=True,
         csv_file_path="lists/datasets_train.csv",  # Assuming there is a csv file for training data
         transform=tr_transform,
     )
 
     dataset_val = NNUNetCardiacDataset(
+        verbose=True,
         csv_file_path="lists/datasets_val.csv",  # Assuming there is a csv file for training data
         transform=val_transform,
     )
     trainloader = DataLoader(dataset_train,
-                             batch_size=128,
+                             batch_size=4,
                              shuffle=True,
-                             num_workers=0,
-                             pin_memory=True,
-                             collate_fn=custom_collate_fn,
+                             num_workers=2,
+                             prefetch_factor=1,
+                             # pin_memory=True,
+                             # collate_fn=custom_collate_fn,
                              )
 
-    valloader = DataLoader(dataset_val,
-                           batch_size=8,
-                           shuffle=False,
-                           num_workers=0,
-                           pin_memory=True,
-                           collate_fn=custom_collate_fn,
-                           )
-
-    for i in valloader:
+    # valloader = DataLoader(dataset_val,
+    #                        batch_size=8,
+    #                        shuffle=False,
+    #                        num_workers=8,
+    #                        pin_memory=True,
+    #                        # collate_fn=custom_collate_fn,
+    #                        )
+    tic = time.time()
+    print("Starting to load data")
+    for i in trainloader:
         print(i['image'].shape)
+        break
+    print("Overall: ", time.time() - tic)

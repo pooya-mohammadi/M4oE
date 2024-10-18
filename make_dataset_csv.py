@@ -1,13 +1,16 @@
+from os.path import join, split, exists
+import numpy as np
 import os
 
 import pandas as pd
 from deep_utils import DirUtils
-from sklearn.model_selection import train_test_split
 from argparse import ArgumentParser
+from joblib import Parallel, delayed
 
 parser = ArgumentParser()
 parser.add_argument("--split", action="store_true")
 parser.add_argument("--name", default="datasets", type=str)
+parser.add_argument("--n_jobs", default=10, type=int)
 parser.add_argument("--img_ext", default=".npz", type=str)
 parser.add_argument("--seg_ext", default=".npz", type=str)
 parser.add_argument("--train", action="store_true")
@@ -17,7 +20,6 @@ parser.add_argument("--nnunet",
 args = parser.parse_args()
 
 seed = 1234
-
 
 
 def npz_csv():
@@ -42,19 +44,39 @@ def npz_csv():
 
     for dataset_name, config in datasets_config.items():
         data_files = DirUtils.list_dir_full_path(config['data_dir'], interest_extensions=args.img_ext)
-        for filepath in data_files:
-            samples.append([
-                filepath,
-                config['predict_head'],
-                config['num_classes'],
-            ])
-    if args.split:
-        train, val = train_test_split(samples, test_size=0.1, random_state=seed)
-        pd.DataFrame(train, columns=columns).to_csv(DirUtils.split_extension(csv_file_path, suffix="_train"),
-                                                    index=False)
-        pd.DataFrame(val, columns=columns).to_csv(DirUtils.split_extension(csv_file_path, suffix="_val"), index=False)
-    else:
-        pd.DataFrame(samples, columns=columns).to_csv(csv_file_path, index=False)
+
+        if args.split:
+            split_path = DirUtils.split_extension(join(config['data_dir']), suffix="_split")
+            os.makedirs(split_path, exist_ok=True)
+        else:
+            split_path = None
+        samples_ = Parallel(n_jobs=args.n_jobs)(
+            delayed(process_file)(config, split_path, filepath) for filepath in data_files)
+        samples.extend(samples_)
+    pd.DataFrame(samples, columns=columns).to_csv(csv_file_path, index=False)
+
+
+def process_file(config, split_path, filepath):
+    if split_path:
+        file_data = np.load(filepath)
+        img = file_data['data']
+        seg = file_data['seg']
+        for z_index in range(img.shape[1]):
+            img_ = img[:, z_index, ...]
+            seg_ = seg[:, z_index, ...]
+            img_path = join(split_path,
+                            f"{DirUtils.split_extension(split(filepath)[-1], suffix=f"_{z_index}_img")}")
+            seg_path = join(split_path,
+                            f"{DirUtils.split_extension(split(filepath)[-1], suffix=f"_{z_index}_seg")}")
+            if not exists(img_path) or not exists(seg_path):
+                np.savez(img_path, img_)  # noqa
+                np.savez(seg_path, seg_)  # noqa
+    sample = [
+        filepath,
+        config['predict_head'],
+        config['num_classes'],
+    ]
+    return sample
 
 
 if __name__ == '__main__':
