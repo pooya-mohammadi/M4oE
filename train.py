@@ -9,7 +9,7 @@ import torch.backends.cudnn as cudnn
 
 from config import get_config
 from networks.vision_transformer import SwinUnet
-from trainer import trainer_synapse
+from trainer import trainer_cardiac
 
 parser = argparse.ArgumentParser()
 
@@ -133,4 +133,4 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     print(f"Input args: {args}, config: {config}")
-    trainer_synapse(args, net, args.output_dir)
+    trainer_cardiac(args, net, args.output_dir)

@@ -189,40 +189,40 @@ class NNUnetCreator:
 
         return ComposeTransforms(transforms)
 
-    @staticmethod
-    def get_validation_transforms(
-            deep_supervision_scales: Union[List, Tuple, None],
-            is_cascaded: bool = False,
-            foreground_labels: Union[Tuple[int, ...], List[int]] = None,
-            regions: List[Union[List[int], Tuple[int, ...], int]] = None,
-            ignore_label: int = None,
-    ) -> BasicTransform:
-        transforms = []
-        transforms.append(
-            RemoveLabelTansform(-1, 0)
-        )
+    # @staticmethod
+    # def get_validation_transforms(
+    #         deep_supervision_scales: Union[List, Tuple, None],
+    #         is_cascaded: bool = False,
+    #         foreground_labels: Union[Tuple[int, ...], List[int]] = None,
+    #         regions: List[Union[List[int], Tuple[int, ...], int]] = None,
+    #         ignore_label: int = None,
+    # ) -> BasicTransform:
+    #     transforms = []
+    #     transforms.append(
+    #         RemoveLabelTansform(-1, 0)
+    #     )
 
-        if is_cascaded:
-            transforms.append(
-                MoveSegAsOneHotToDataTransform(
-                    source_channel_idx=1,
-                    all_labels=foreground_labels,
-                    remove_channel_from_source=True
-                )
-            )
+    # if is_cascaded:
+    #     transforms.append(
+    #         MoveSegAsOneHotToDataTransform(
+    #             source_channel_idx=1,
+    #             all_labels=foreground_labels,
+    #             remove_channel_from_source=True
+    #         )
+    #     )
 
-        if regions is not None:
-            # the ignore label must also be converted
-            transforms.append(
-                ConvertSegmentationToRegionsTransform(
-                    regions=list(regions) + [ignore_label] if ignore_label is not None else regions,
-                    channel_in_seg=0
-                )
-            )
-
-        if deep_supervision_scales is not None:
-            transforms.append(DownsampleSegForDSTransform(ds_scales=deep_supervision_scales))
-        return ComposeTransforms(transforms)
+    # if regions is not None:
+    #     the ignore label must also be converted
+    # transforms.append(
+    #     ConvertSegmentationToRegionsTransform(
+    #         regions=list(regions) + [ignore_label] if ignore_label is not None else regions,
+    #         channel_in_seg=0
+    #     )
+    # )
+    #
+    # if deep_supervision_scales is not None:
+    #     transforms.append(DownsampleSegForDSTransform(ds_scales=deep_supervision_scales))
+    # return ComposeTransforms(transforms)
 
     def get_transforms(self):
         tr_transforms = self.get_training_transforms(
@@ -234,11 +234,13 @@ class NNUnetCreator:
             ignore_label=None)
 
         # validation pipeline
-        val_transforms = self.get_validation_transforms(None,
-                                                        is_cascaded=False,
-                                                        foreground_labels=self.foreground_labels,
-                                                        regions=None,
-                                                        ignore_label=None)
+        val_transforms = self.get_training_transforms(self.patch_size, (0, 0), None, None, False,
+                                                      use_mask_for_norm=None,
+                                                      is_cascaded=False,
+                                                      foreground_labels=self.foreground_labels,
+                                                      # Does not matter cause is_cascaded is set to False!
+                                                      regions=None,
+                                                      ignore_label=None)
         return tr_transforms, val_transforms
 
 
@@ -286,3 +288,49 @@ class NNUNetCardiacDataset(Dataset):
         sample = {k: v for k, v in sample.items() if v is not None}
 
         return sample
+
+
+if __name__ == '__main__':
+    from torch.utils.data._utils.collate import default_collate
+
+
+    def custom_collate_fn(batch):
+        batch = [b for b in batch if b is not None]
+
+        if len(batch) == 0:
+            return None
+
+        return default_collate(batch)
+
+
+    img_size = 224
+
+    tr_transform, val_transform = NNUnetCreator(patch_size=(img_size, img_size)).get_transforms()
+    # max_iterations = args.max_iterations
+    dataset_train = NNUNetCardiacDataset(
+        csv_file_path="lists/datasets_train.csv",  # Assuming there is a csv file for training data
+        transform=tr_transform,
+    )
+
+    dataset_val = NNUNetCardiacDataset(
+        csv_file_path="lists/datasets_val.csv",  # Assuming there is a csv file for training data
+        transform=val_transform,
+    )
+    trainloader = DataLoader(dataset_train,
+                             batch_size=128,
+                             shuffle=True,
+                             num_workers=0,
+                             pin_memory=True,
+                             collate_fn=custom_collate_fn,
+                             )
+
+    valloader = DataLoader(dataset_val,
+                           batch_size=8,
+                           shuffle=False,
+                           num_workers=0,
+                           pin_memory=True,
+                           collate_fn=custom_collate_fn,
+                           )
+
+    for i in valloader:
+        print(i['image'].shape)
